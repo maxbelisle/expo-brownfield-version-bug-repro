@@ -1,56 +1,43 @@
-# Welcome to your Expo app 👋
+# expo-brownfield: autolinked libraries always published at `1.0`
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
-
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Minimal reproducer: default `create-expo-app` SDK 57 template, plus `expo-brownfield` and
+`react-native-keyboard-controller`, with the brownfield plugin publishing to a local directory
+(`./maven-repo`). No other changes.
 
 ```bash
-npm run reset-project
+bun install
+./repro.sh
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+`repro.sh` publishes two brownfield releases and changes only the keyboard-controller version
+between them:
 
-### Other setup steps
+| Brownfield release | keyboard-controller installed | Published as |
+|---|---|---|
+| `1.0.0` | `1.21.9` | `com.reactnativekeyboardcontroller:1.0` |
+| `2.0.0` | `1.22.6` | `com.reactnativekeyboardcontroller:1.0` (same coordinates, different AAR) |
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Output:
 
-## Learn more
+```text
+=== brownfield 1.0.0 (react-native-keyboard-controller 1.21.9 installed) depends on:
+      <artifactId>com.reactnativekeyboardcontroller</artifactId>
+      <version>1.0</version>
+=== keyboard-controller versions in maven-repo:
+1.0
+77f8d44992016a918c7a821125483becb5c7ea6d  maven-repo/expo-brownfield-version-repro/com.reactnativekeyboardcontroller/1.0/com.reactnativekeyboardcontroller-1.0.aar
 
-To learn more about developing your project with Expo, look at the following resources:
+=== brownfield 2.0.0 (react-native-keyboard-controller 1.22.6 installed) depends on:
+      <artifactId>com.reactnativekeyboardcontroller</artifactId>
+      <version>1.0</version>
+=== keyboard-controller versions in maven-repo:
+1.0
+b24b75d39ba1b1377b4a3e2dcc9a29efa2ba4aec  maven-repo/expo-brownfield-version-repro/com.reactnativekeyboardcontroller/1.0/com.reactnativekeyboardcontroller-1.0.aar
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The second release overwrites the first release's `1.0` AAR in place, so brownfield `1.0.0` now
+resolves to keyboard-controller 1.22.6 native code. On an immutable registry (GitHub Packages,
+Maven Central) the second publish fails with a 409 instead, or, if existing coordinates are
+skipped, the host keeps getting the first `1.0` binary ever uploaded.
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+See [ISSUE.md](ISSUE.md) for the cause and a suggested fix.
